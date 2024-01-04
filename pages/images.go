@@ -8,6 +8,14 @@
 	In file:
 		1. ImagesHandler
 		2. UploadFilesHandler
+		3. UploadedHandler
+
+	Links:
+		1. /dataset/:datasetname/images
+		2. /dataset/:datasetname/uploaded
+		3. /dataset/:datasetname/uploaded/:page
+		4. /dataset/:datasetname/images/annotated
+		5. /dataset/:datasetname/images/annotated/:page
 	=============================================================================
 */
 
@@ -23,14 +31,21 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 // Model to pass data to the html template
 type ImagesModel struct {
 	Title        string
 	Menu         string
+	Tag          string
 	ErrorMessage string
 	DatasetName  string
+
+	UploadedPage int64
+	UploadedImgs []string
+
+	Pagination PaginationModel
 }
 
 /****************************************************************************************
@@ -49,38 +64,19 @@ func ImagesHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params) 
 	ET := timelib.EventTimerConstructor()
 	logging.Info_Log("Render Images page")
 
-	// Set response headers
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET")
-	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-
-	// Pointed all template files to render current page
-	parsedPage := template.Must(template.ParseFiles(
-		templatePath+"layouts/index.gohtml", // Must to be first in the list
-		templatePath+"layouts/logo.gohtml",
-		templatePath+"layouts/header.gohtml",
-		templatePath+"layouts/notifications.gohtml",
-		templatePath+"images/body.gohtml",  // page body
-		templatePath+"layouts/menu.gohtml", // menu is using in body, so it shouls be after body.gohtml
-		templatePath+"layouts/footer.gohtml"))
-
-	// Get dataset name from the request parameters
-	datasetName := p.ByName("datasetname")
-
-	// Initialise model
-	model := ImagesModel{Menu: "images"}  // Set active menu button
-	model.Title = datasetName + " Images" // Set title of the webpage
-	model.DatasetName = datasetName
-
-	// Render the page
-	err := parsedPage.Execute(w, &model)
-	if err != nil {
-		logging.Error_Log("Error render dashboard : '%v'", err)
-		http.Error(w, "404 not found.", http.StatusNotFound)
+	// Check if dataset folder existing
+	if !isDatasetExist(w, r, p) {
 		return
 	}
 
-	logging.Info_Log("Finish render images for '%v' dataset page in %s", datasetName, ET.PrintTimerString())
+	// Set model
+	model := ImagesModel{Tag: "upload"}
+	model.UploadedPage = getRequestedPage(p)
+
+	// Render the images page
+	RenderImagesPage(w, r, p, model)
+
+	logging.Info_Log("Finish render images for '%v' dataset page in %s", p.ByName("datasetname"), ET.PrintTimerString())
 }
 
 /****************************************************************************************
@@ -99,6 +95,11 @@ func UploadFilesHandler(w http.ResponseWriter, r *http.Request, p httprouter.Par
 	ET := timelib.EventTimerConstructor()
 	logging.Info_Log("Upload image")
 
+	// Check if dataset folder existing
+	if !isDatasetExist(w, r, p) {
+		return
+	}
+
 	// Parse our multipart form, 10 << 20 specifies a maximum
 	// upload of 10 MB files.
 	r.ParseMultipartForm(10 << 20)
@@ -114,8 +115,7 @@ func UploadFilesHandler(w http.ResponseWriter, r *http.Request, p httprouter.Par
 	defer file.Close()
 
 	// Get dataset name
-	datasetName := p.ByName("datasetname")
-	fileNamePath := tools.EnsureSlashInEnd(datsetsPath) + datasetName + "/uploaded/images/" + handler.Filename
+	fileNamePath := tools.EnsureSlashInEnd(datsetsPath) + p.ByName("datasetname") + "/uploaded/images/" + handler.Filename
 
 	storeFile, err := os.Create(fileNamePath)
 	if err != nil {
@@ -142,6 +142,185 @@ func UploadFilesHandler(w http.ResponseWriter, r *http.Request, p httprouter.Par
 	logging.Info_Log("Successfully finish uploading file request in %s", ET.PrintTimerString())
 }
 
+/****************************************************************************************
+ *
+ * Function : UploadedHandler
+ *
+ * Purpose : Handler for the request to upload images
+ *
+ *   Input : w http.ResponseWriter - output value
+ *			 r *http.Request - request detials
+ *			 p httprouter.Params - parameter request
+ *
+ *  Return : Nothing
+ */
+func UploadedHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	ET := timelib.EventTimerConstructor()
+	logging.Info_Log("Uploaded image")
+
+	// Check if dataset folder existing
+	if !isDatasetExist(w, r, p) {
+		return
+	}
+
+	// Get uploaded Images from dataset
+	files, totalFiles, err := getFilesByPath(
+		tools.EnsureSlashInEnd(datsetsPath)+p.ByName("datasetname")+"/uploaded/images/",
+		p.ByName("datasetname"),
+		maxImagesInGallery,
+		getRequestedPage(p))
+
+	if err != nil {
+		// Redirect to the index again
+		http.Redirect(w, r, "/?errorMessage=Cannot%20get%20files%20for%20'"+p.ByName("datasetname")+"'", http.StatusSeeOther)
+		return
+	}
+
+	// Set model
+	model := ImagesModel{Tag: "uploaded"}
+	model.UploadedPage = getRequestedPage(p)
+	model.UploadedImgs = files
+	model.Pagination = getPaginationModel(getRequestedPage(p), totalFiles, maxImagesInGallery, "/dataset/"+p.ByName("datasetname")+"/uploaded/")
+
+	// Render the images page
+	RenderImagesPage(w, r, p, model)
+
+	logging.Info_Log("Uploaded page render for datatset '%v' and page %v", p.ByName("datasetname"), model.UploadedPage)
+	logging.Info_Log("Successfully finish uploading file request in %s", ET.PrintTimerString())
+}
+
+/****************************************************************************************
+ *
+ * Function : RenderImagesPage
+ *
+ * Purpose : Render images page
+ *
+ *   Input : w http.ResponseWriter - output value
+ *			 r *http.Request - request detials
+ *			 p httprouter.Params - parameter request
+ * 			 model ImagesModel - model to render template
+ *
+ *  Return : Nothing
+ */
+func RenderImagesPage(w http.ResponseWriter, r *http.Request, p httprouter.Params, model ImagesModel) {
+	// Get dataset name from the request parameters
+	datasetName := p.ByName("datasetname")
+
+	// Set response headers
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+	// Pointed all template files to render current page
+	parsedPage, errTemplate :=
+		template.New("index.gohtml").Funcs(template.FuncMap{
+			"minus": func(a, b int64) int64 {
+				return a - b
+			},
+			"add": func(a, b int64) int64 {
+				return a + b
+			},
+			"doPrint": func(a int64, b int64, c int64) bool {
+				if (a - b) < c {
+					return false
+				}
+				return true
+			},
+			"pagesRangeUp": func(page int64, numberPages int64, totalPages int64) []int64 {
+				var pages []int64
+				for number := page + 1; number < (page + numberPages); number++ {
+					if int64(number) < totalPages {
+						pages = append(pages, number)
+					}
+				}
+				return pages
+			},
+			"pagesRangeDown": func(page int64, numberPages int64) []int64 {
+				var pages []int64
+				for number := page - numberPages; number < page; number++ {
+					if int64(number) > 1 {
+						pages = append(pages, number)
+					}
+				}
+				return pages
+			},
+		}).ParseFiles(
+			templatePath+"layouts/index.gohtml", // Must to be first in the list
+			templatePath+"layouts/logo.gohtml",
+			templatePath+"layouts/header.gohtml",
+			templatePath+"layouts/notifications.gohtml",
+			templatePath+"images/body.gohtml", // page body
+			templatePath+"images/upload.gohtml",
+			templatePath+"images/uploaded.gohtml",
+			templatePath+"images/pagination.gohtml",
+			templatePath+"layouts/menu.gohtml", // menu is using in body, so it shouls be after body.gohtml
+			templatePath+"layouts/footer.gohtml")
+
+	if errTemplate != nil {
+		logging.Error_Log("Error parse the files : '%v'", errTemplate)
+		http.Error(w, "404 not found.", http.StatusNotFound)
+		return
+	}
+
+	// Initialise model
+	model.Menu = "images"                 // Set active menu button
+	model.Title = datasetName + " Images" // Set title of the webpage
+	model.DatasetName = datasetName
+
+	// Render the page
+	err := parsedPage.Execute(w, &model) //ExecuteTemplate(w, templatePath+"layouts/index.gohtml", &model)//
+	if err != nil {
+		logging.Error_Log("Error render dashboard : '%v'", err)
+		http.Error(w, "404 not found.", http.StatusNotFound)
+		return
+	}
+}
+
+/****************************************************************************************
+ *
+ * Function : DownloadImageHandler
+ *
+ * Purpose : Handler for the 'Image download' request
+ *
+ *   Input : w http.ResponseWriter - output value
+ *			 r *http.Request - request detials
+ *			 p httprouter.Params - parameter request
+ *
+ *  Return : Nothing
+ */
+func DownloadImageHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	http.ServeFile(w, r, tools.EnsureSlashInEnd(datsetsPath)+p.ByName("datasetname")+"/uploaded/images/"+p.ByName("filename"))
+}
+
+/****************************************************************************************
+ *
+ * Function : getRequestedPage
+ *
+ * Purpose : Get page number from the request
+ *
+ *   Input : p httprouter.Params - parameter request
+ *
+ *  Return : int64 - page number
+ */
+func getRequestedPage(p httprouter.Params) int64 {
+	pageInt, err := strconv.ParseInt(p.ByName("page"), 10, 0)
+	if err != nil {
+		return 1
+	}
+
+	return pageInt
+}
+
+/****************************************************************************************
+ *
+ * Function : PrintFileSize
+ *
+ * Purpose : Print file size in string format
+ *
+ *   Input : fileSize int64 - file size in int format
+ *
+ *  Return : String
+ */
 func PrintFileSize(fileSize int64) string {
 	if int(fileSize/(1024*1024*1024*1024)) > 0 {
 		return fmt.Sprintf("%vTB", fileSize/(1024*1024*1024*1024))

@@ -42,6 +42,11 @@ func DashBoardHandler(w http.ResponseWriter, r *http.Request, p httprouter.Param
 	ET := timelib.EventTimerConstructor()
 	logging.Info_Log("Render Dashboard page")
 
+	// Check if dataset folder existing
+	if !isDatasetExist(w, r, p) {
+		return
+	}
+
 	// Set response headers
 	w.Header().Set("Access-Control-Allow-Methods", "GET")
 	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
@@ -57,10 +62,8 @@ func DashBoardHandler(w http.ResponseWriter, r *http.Request, p httprouter.Param
 		templatePath+"layouts/menu.gohtml",   // menu is using in bodu, so it shouls be after body.gohtml
 		templatePath+"layouts/footer.gohtml"))
 
-	// Get dataset name from the request parameters
-	datasetName := p.ByName("datasetname")
-
 	// Initialise model
+	datasetName := p.ByName("datasetname")
 	model := DashboardModel{Menu: "dashboard"} // Set active menu button
 	model.Title = datasetName + " Dashboard"   // Set title of the webpage
 	model.DatasetName = datasetName

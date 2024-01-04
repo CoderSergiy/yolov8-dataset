@@ -15,3 +15,6 @@ package pages
 const staticsPath = "web/statics/"
 const templatePath = "web/templates/"
 const datsetsPath = "/datasets"
+
+// Images page
+const maxImagesInGallery = 5

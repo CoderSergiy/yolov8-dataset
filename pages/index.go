@@ -57,6 +57,9 @@ func IndexHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
+	// When received error - print it
+	model.ErrorMessage = r.URL.Query().Get("errorMessage")
+
 	// Render Index page with created model
 	renderIndexPage(w, model)
 }

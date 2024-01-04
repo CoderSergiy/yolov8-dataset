@@ -6,10 +6,6 @@
 	Purpose: Server implementation to render project webpages
 			 Includes assets and favicon
 
-	Handlers supported by server:
-		1. messageStatusHandler
-		2. triggerActionHandler
-		3. wsChargerHandler
 	=============================================================================
 */
 
@@ -22,14 +18,19 @@ import (
 	"net/http"
 )
 
+func faviconHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	http.ServeFile(w, r, "./web/statics/img/favicon.ico")
+}
+
 func main() {
 	router := httprouter.New()
 
 	// Assets files handler
-	//router.GET("/favicon.ico", FaviconHandler)
+	router.GET("/favicon.ico", faviconHandler)
 	router.ServeFiles("/assets/*filepath", http.Dir("./web/statics/"))
 
 	// Dataset dashboard
+	router.GET("/dataset/:datasetname/", pages.DashBoardHandler) // Dashboard index page
 	router.GET("/dataset/:datasetname/dashboard", pages.DashBoardHandler)
 
 	// Dataset classes
@@ -38,7 +39,11 @@ func main() {
 
 	// Images page
 	router.GET("/dataset/:datasetname/images", pages.ImagesHandler)
-	router.POST("/dataset/:datasetname/upload", pages.UploadFilesHandler)
+	router.GET("/dataset/:datasetname/uploaded", pages.UploadedHandler)
+	router.GET("/dataset/:datasetname/uploaded/:page", pages.UploadedHandler)
+	router.GET("/dataset/:datasetname/images/annotated/:page", pages.UploadedHandler)
+	router.POST("/dataset/:datasetname/upload", pages.UploadFilesHandler)              // Handle 'file upload' request
+	router.GET("/dataset/:datasetname/download/:filename", pages.DownloadImageHandler) // Handle 'file download' request
 
 	// Landing page
 	router.GET("/", pages.IndexHandler)
