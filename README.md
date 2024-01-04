@@ -1,5 +1,4 @@
 # yolov8-dataset
--------------
 ![Project status](https://img.shields.io/badge/version-0.1.1-green.svg)
 ![License](https://img.shields.io/dub/l/vibe-d.svg)
 
