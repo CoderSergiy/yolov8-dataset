@@ -9,7 +9,7 @@ Project to create and mange dataset for Yolov8 object detection
 
 Planned milestones and features:
 
-- [.] Finish MVP with ability to train the model
+- [ ] Finish MVP with ability to train the model
 - [ ] Using AWS S3 as additional source
 - [ ] Make it able to publish on AWS and use GPU feature
 
