@@ -17,4 +17,4 @@ const templatePath = "web/templates/"
 const datsetsPath = "/datasets"
 
 // Images page
-const maxImagesInGallery = 5
+const maxImagesInGallery = 20

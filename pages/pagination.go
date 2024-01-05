@@ -34,11 +34,24 @@ type PaginationModel struct {
 
 func getPaginationModel(page int64, totalItems int64, itemsPerPage int64, url string) PaginationModel {
 
+
+
 	model := PaginationModel{Page: page,
 		Items:          totalItems,
 		ItemsPerPage:   itemsPerPage,
-		LastPageNumber: (totalItems / itemsPerPage),
+		LastPageNumber: GetPaginationPages(totalItems, itemsPerPage),
 		Url:            url}
 
 	return model
+}
+
+func GetPaginationPages(totalItems int64, itemsPerPage int64) int64 {
+
+	lastPageNumber := totalItems / itemsPerPage
+
+	if (totalItems % itemsPerPage) != 0 {
+		return (lastPageNumber + 1)
+	}
+
+	return lastPageNumber
 }

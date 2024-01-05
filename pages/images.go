@@ -163,6 +163,12 @@ func UploadedHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params
 		return
 	}
 
+	if getRequestedPage(p) == -1 {
+		// Redirect to the index again
+		http.Redirect(w, r, "/dataset/" + p.ByName("datasetname") + "/uploaded/1", http.StatusSeeOther)
+		return
+	}
+
 	// Get uploaded Images from dataset
 	files, totalFiles, err := getFilesByPath(
 		tools.EnsureSlashInEnd(datsetsPath)+p.ByName("datasetname")+"/uploaded/images/",
@@ -173,6 +179,12 @@ func UploadedHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params
 	if err != nil {
 		// Redirect to the index again
 		http.Redirect(w, r, "/?errorMessage=Cannot%20get%20files%20for%20'"+p.ByName("datasetname")+"'", http.StatusSeeOther)
+		return
+	}
+
+	if getRequestedPage(p) > GetPaginationPages(totalFiles, maxImagesInGallery) {
+		// Redirect to the index again
+		http.Redirect(w, r, "/dataset/" + p.ByName("datasetname") + "/uploaded/1", http.StatusSeeOther)
 		return
 	}
 
@@ -305,7 +317,7 @@ func DownloadImageHandler(w http.ResponseWriter, r *http.Request, p httprouter.P
 func getRequestedPage(p httprouter.Params) int64 {
 	pageInt, err := strconv.ParseInt(p.ByName("page"), 10, 0)
 	if err != nil {
-		return 1
+		return -1
 	}
 
 	return pageInt
