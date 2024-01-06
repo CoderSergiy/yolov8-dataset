@@ -37,13 +37,16 @@ func main() {
 	//router.GET("/dataset/:name/classes/list", pages.DashBoardHandler)
 	//router.POST("/dataset/:name/classes/update", pages.DashBoardHandler)
 
-	// Images page
+	// Images pages
 	router.GET("/dataset/:datasetname/images", pages.ImagesHandler)
 	router.GET("/dataset/:datasetname/uploaded", pages.UploadedHandler)
 	router.GET("/dataset/:datasetname/uploaded/:page", pages.UploadedHandler)
 	router.GET("/dataset/:datasetname/images/annotated/:page", pages.UploadedHandler)
 	router.POST("/dataset/:datasetname/upload", pages.UploadFilesHandler)              // Handle 'file upload' request
 	router.GET("/dataset/:datasetname/download/:filename", pages.DownloadImageHandler) // Handle 'file download' request
+
+	// Annotate pages
+	router.GET("/dataset/:datasetname/annotate/:page", pages.AnnotateHandler)
 
 	// Landing page
 	router.GET("/", pages.IndexHandler)

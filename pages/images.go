@@ -163,9 +163,10 @@ func UploadedHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params
 		return
 	}
 
+	// Check if page number makes sense
 	if getRequestedPage(p) == -1 {
 		// Redirect to the index again
-		http.Redirect(w, r, "/dataset/" + p.ByName("datasetname") + "/uploaded/1", http.StatusSeeOther)
+		http.Redirect(w, r, "/dataset/"+p.ByName("datasetname")+"/uploaded/1", http.StatusSeeOther)
 		return
 	}
 
@@ -184,7 +185,7 @@ func UploadedHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params
 
 	if getRequestedPage(p) > GetPaginationPages(totalFiles, maxImagesInGallery) {
 		// Redirect to the index again
-		http.Redirect(w, r, "/dataset/" + p.ByName("datasetname") + "/uploaded/1", http.StatusSeeOther)
+		http.Redirect(w, r, "/dataset/"+p.ByName("datasetname")+"/uploaded/1", http.StatusSeeOther)
 		return
 	}
 
@@ -225,38 +226,7 @@ func RenderImagesPage(w http.ResponseWriter, r *http.Request, p httprouter.Param
 
 	// Pointed all template files to render current page
 	parsedPage, errTemplate :=
-		template.New("index.gohtml").Funcs(template.FuncMap{
-			"minus": func(a, b int64) int64 {
-				return a - b
-			},
-			"add": func(a, b int64) int64 {
-				return a + b
-			},
-			"doPrint": func(a int64, b int64, c int64) bool {
-				if (a - b) < c {
-					return false
-				}
-				return true
-			},
-			"pagesRangeUp": func(page int64, numberPages int64, totalPages int64) []int64 {
-				var pages []int64
-				for number := page + 1; number < (page + numberPages); number++ {
-					if int64(number) < totalPages {
-						pages = append(pages, number)
-					}
-				}
-				return pages
-			},
-			"pagesRangeDown": func(page int64, numberPages int64) []int64 {
-				var pages []int64
-				for number := page - numberPages; number < page; number++ {
-					if int64(number) > 1 {
-						pages = append(pages, number)
-					}
-				}
-				return pages
-			},
-		}).ParseFiles(
+		template.New("index.gohtml").Funcs(funcPaginationMap).ParseFiles(
 			templatePath+"layouts/index.gohtml", // Must to be first in the list
 			templatePath+"layouts/logo.gohtml",
 			templatePath+"layouts/header.gohtml",
@@ -264,7 +234,7 @@ func RenderImagesPage(w http.ResponseWriter, r *http.Request, p httprouter.Param
 			templatePath+"images/body.gohtml", // page body
 			templatePath+"images/upload.gohtml",
 			templatePath+"images/uploaded.gohtml",
-			templatePath+"images/pagination.gohtml",
+			templatePath+"layouts/pagination.gohtml",
 			templatePath+"layouts/menu.gohtml", // menu is using in body, so it shouls be after body.gohtml
 			templatePath+"layouts/footer.gohtml")
 
