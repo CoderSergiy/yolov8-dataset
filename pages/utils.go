@@ -81,10 +81,18 @@ func getFilesByPath(path string, dataset string, showPerPage int64, page int64) 
 	lastImgIndex := startImgIndex + showPerPage
 	for index, f := range files {
 		if int64(index) >= startImgIndex && int64(index) < lastImgIndex {
-			filesToPrint = append(filesToPrint, "/dataset/"+dataset+"/download/"+f.Name())
+			//filesToPrint = append(filesToPrint, "/dataset/"+dataset+"/download/"+f.Name())
+			filesToPrint = append(filesToPrint, f.Name())
 		}
 	}
 
 	logging.Info_Log("Find [%v] files between index [%v] and [%v] from total [%v]", len(filesToPrint), startImgIndex, lastImgIndex, len(files))
 	return filesToPrint, int64(len(files)), nil
+}
+
+func RedirectToPage(w http.ResponseWriter, r *http.Request, p httprouter.Params, path string, errorMessage string) {
+	pageToRedirect := "/dataset/"+p.ByName("datasetname")+"/uploaded/1"
+	logging.Info_Log("Redirect to '%v' as result of '%v'", pageToRedirect, errorMessage)
+	// Redirect to the index again
+	http.Redirect(w, r, pageToRedirect, http.StatusSeeOther)
 }

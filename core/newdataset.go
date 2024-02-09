@@ -60,7 +60,12 @@ func CreateNewDataset(path string) error {
 	}
 
 	// Create folder for versions
-	if err := os.MkdirAll(tools.EnsureSlashInEnd(path)+"version", os.ModePerm); err != nil {
+	if err := os.MkdirAll(tools.EnsureSlashInEnd(path)+"versions", os.ModePerm); err != nil {
+		return err
+	}
+
+	// Create folder for versions
+	if err := os.MkdirAll(tools.EnsureSlashInEnd(path)+"models", os.ModePerm); err != nil {
 		return err
 	}
 

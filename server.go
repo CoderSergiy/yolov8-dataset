@@ -40,13 +40,13 @@ func main() {
 	// Images pages
 	router.GET("/dataset/:datasetname/images", pages.ImagesHandler)
 	router.GET("/dataset/:datasetname/uploaded", pages.UploadedHandler)
-	router.GET("/dataset/:datasetname/uploaded/:page", pages.UploadedHandler)
-	router.GET("/dataset/:datasetname/images/annotated/:page", pages.UploadedHandler)
+	router.GET("/dataset/:datasetname/uploaded/:page/page", pages.UploadedHandler)
+	//router.GET("/dataset/:datasetname/images/annotated/:page", pages.UploadedHandler)
 	router.POST("/dataset/:datasetname/upload", pages.UploadFilesHandler)              // Handle 'file upload' request
-	router.GET("/dataset/:datasetname/download/:filename", pages.DownloadImageHandler) // Handle 'file download' request
+	router.GET("/dataset/:datasetname/download/:filename", pages.DownloadImageHandler) // Handle 'file download' request - when browser making a gallery
 
 	// Annotate pages
-	router.GET("/dataset/:datasetname/annotate/:page", pages.AnnotateHandler)
+	router.GET("/dataset/:datasetname/annotate", pages.AnnotateHandler)
 
 	// Landing page
 	router.GET("/", pages.IndexHandler)

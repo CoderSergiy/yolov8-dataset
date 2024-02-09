@@ -165,8 +165,7 @@ func UploadedHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params
 
 	// Check if page number makes sense
 	if getRequestedPage(p) == -1 {
-		// Redirect to the index again
-		http.Redirect(w, r, "/dataset/"+p.ByName("datasetname")+"/uploaded/1", http.StatusSeeOther)
+		RedirectToPage(w, r, p, "/dataset/"+p.ByName("datasetname")+"/uploaded/1", "page is not correct")
 		return
 	}
 
@@ -178,14 +177,13 @@ func UploadedHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params
 		getRequestedPage(p))
 
 	if err != nil {
-		// Redirect to the index again
-		http.Redirect(w, r, "/?errorMessage=Cannot%20get%20files%20for%20'"+p.ByName("datasetname")+"'", http.StatusSeeOther)
+		RedirectToPage(w, r, p, "/?errorMessage=Cannot%20get%20files%20for%20'"+p.ByName("datasetname")+"'", "cannot read files from '/uploaded/images/' folder")
 		return
 	}
 
-	if getRequestedPage(p) > GetPaginationPages(totalFiles, maxImagesInGallery) {
-		// Redirect to the index again
-		http.Redirect(w, r, "/dataset/"+p.ByName("datasetname")+"/uploaded/1", http.StatusSeeOther)
+	if getRequestedPage(p) > GetPaginationPages(totalFiles, maxImagesInGallery) && GetPaginationPages(totalFiles, maxImagesInGallery) != 0 {
+		RedirectToPage(w, r, p, "/dataset/"+p.ByName("datasetname")+"/uploaded/1",
+			fmt.Sprintf("page %v more than possible %v", getRequestedPage(p), GetPaginationPages(totalFiles, maxImagesInGallery)))
 		return
 	}
 
@@ -287,7 +285,7 @@ func DownloadImageHandler(w http.ResponseWriter, r *http.Request, p httprouter.P
 func getRequestedPage(p httprouter.Params) int64 {
 	pageInt, err := strconv.ParseInt(p.ByName("page"), 10, 0)
 	if err != nil {
-		return -1
+		return 1
 	}
 
 	return pageInt
